@@ -1,8 +1,9 @@
 # LearnSphere AI
 
 LearnSphere AI is an AI-powered virtual teacher. This repository contains a
-React + Vite frontend and a Python + FastAPI backend. AI integrations are not
-configured yet.
+React + Vite frontend and a Python + FastAPI backend. The backend supports a
+deterministic mock teaching provider by default and an optional OpenAI API
+provider for model-generated lessons and answers.
 
 ## Prerequisites
 
@@ -47,20 +48,40 @@ Set-Location .\backend
 ```
 
 The versioned demonstration API is available under `/api/v1`. It returns
-clearly labelled sample content; AI lesson generation and tutoring are not
-configured. Local Vite CORS origins default to `http://localhost:5173` and
+clearly labelled sample content. Local Vite CORS origins default to
+`http://localhost:5173` and
 `http://127.0.0.1:5173`. Override them with a comma-separated
 `LEARNINGSPHERE_CORS_ORIGINS` environment variable when needed.
 
 ### AI teaching engine foundation
 
-The provider-independent teaching engine currently uses a deterministic local
-mock. It does not call an AI service, access the internet, or require an API
-key. Generated lessons and answers are labelled as mock demonstrations and
-are not researched or fact-checked. Content is validated against Pydantic
+The provider-independent teaching engine uses a deterministic local mock by
+default. The mock does not call an AI service, access the internet, or require
+an API key. To enable model-generated lessons and answers, use the OpenAI API
+provider. Model-generated content is not independently verified or researched;
+the API does not provide citations. Content is validated against Pydantic
 schemas; visualization events use enumerated event types and structured scalar
 parameters. Lesson code snippets, when present, are content only and are never
 executed by the backend.
+
+From `backend/`, copy the safe placeholder configuration and edit the local
+`.env` file with your own API key. Never put provider credentials in frontend
+configuration or request bodies, and do not commit `.env`:
+
+```powershell
+Copy-Item .env.example .env
+# Edit .env and set TEACHING_PROVIDER=openai and OPENAI_API_KEY to your key.
+```
+
+Set `TEACHING_PROVIDER=mock` to return to the no-network mock. The OpenAI
+provider defaults to `https://api.openai.com/v1` and `gpt-4o-mini`; its
+`OPENAI_BASE_URL` and `OPENAI_MODEL` values can be changed in backend `.env`
+for an API-compatible endpoint that supports strict JSON Schema outputs.
+Restart the backend after changing provider settings. Remote endpoints must use
+HTTPS; HTTP is permitted only for loopback development endpoints.
+Missing configuration, rate limits, timeouts, and provider failures return
+sanitized HTTP errors; provider response bodies and credentials are not
+included.
 
 Generate a lesson for an arbitrary learner-selected topic:
 
@@ -102,7 +123,7 @@ Invoke-RestMethod `
 ```
 
 Both endpoints are documented in `/docs`. Invalid requests return HTTP 422;
-invalid provider output is rejected with a generic HTTP 502 response.
+invalid provider output and provider failures return sanitized HTTP errors.
 
 Run the complete backend test suite from the repository root:
 

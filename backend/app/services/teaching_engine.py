@@ -6,7 +6,9 @@ from app.models.learning import (
     LessonQuestionRequest,
     TeachingAnswer,
 )
+from app.core.config import get_teaching_provider_settings
 from app.services.mock_teaching_provider import MockTeachingProvider
+from app.services.openai_teaching_provider import OpenAITeachingProvider
 from app.services.teaching_provider import TeachingProvider
 
 
@@ -45,6 +47,11 @@ class TeachingEngine:
             raise ProviderOutputError(
                 "Teaching provider returned unsupported research provenance."
             )
+        if provider_status == "generated":
+            lesson.message = (
+                "Model-generated content; not independently verified or "
+                "researched."
+            )
         return lesson
 
     def answer_question(self, request: LessonQuestionRequest) -> TeachingAnswer:
@@ -60,7 +67,29 @@ class TeachingEngine:
             raise ProviderOutputError(
                 "Teaching provider returned unsupported answer provenance."
             )
+        if provider_status == "generated":
+            answer.disclaimer = (
+                "Model-generated answer; not independently verified or "
+                "researched."
+            )
         return answer
 
 
-teaching_engine = TeachingEngine(provider=MockTeachingProvider())
+def create_teaching_engine() -> TeachingEngine:
+    provider_name, base_url, model, api_key = get_teaching_provider_settings()
+    if provider_name == "mock":
+        return TeachingEngine(provider=MockTeachingProvider())
+    if provider_name == "openai":
+        return TeachingEngine(
+            provider=OpenAITeachingProvider(
+                api_key=api_key,
+                model=model,
+                base_url=base_url,
+            )
+        )
+    raise ValueError(
+        "TEACHING_PROVIDER must be either 'mock' or 'openai'."
+    )
+
+
+teaching_engine = create_teaching_engine()
