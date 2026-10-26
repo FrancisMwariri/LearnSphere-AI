@@ -35,3 +35,78 @@ python -m venv .venv
 The API runs at `http://127.0.0.1:8000`. Check its health at
 `http://127.0.0.1:8000/health`; interactive API documentation is available at
 `http://127.0.0.1:8000/docs`.
+
+### Backend tests
+
+The backend requirements include the test dependencies. From the repository
+root, run:
+
+```powershell
+Set-Location .\backend
+.\.venv\Scripts\python.exe -m pytest
+```
+
+The versioned demonstration API is available under `/api/v1`. It returns
+clearly labelled sample content; AI lesson generation and tutoring are not
+configured. Local Vite CORS origins default to `http://localhost:5173` and
+`http://127.0.0.1:5173`. Override them with a comma-separated
+`LEARNINGSPHERE_CORS_ORIGINS` environment variable when needed.
+
+### AI teaching engine foundation
+
+The provider-independent teaching engine currently uses a deterministic local
+mock. It does not call an AI service, access the internet, or require an API
+key. Generated lessons and answers are labelled as mock demonstrations and
+are not researched or fact-checked. Content is validated against Pydantic
+schemas; visualization events use enumerated event types and structured scalar
+parameters. Lesson code snippets, when present, are content only and are never
+executed by the backend.
+
+Generate a lesson for an arbitrary learner-selected topic:
+
+```powershell
+$lessonRequest = @{
+    topic = "Fractions"
+    subject = "mathematics"
+    learner_level = "beginner"
+    learning_objective = "Explain how equivalent fractions represent the same value"
+    preferred_explanation_style = "visual examples"
+} | ConvertTo-Json
+
+$lesson = Invoke-RestMethod `
+    -Method Post `
+    -Uri "http://127.0.0.1:8000/api/v1/teaching/lessons" `
+    -ContentType "application/json" `
+    -Body $lessonRequest
+$lesson | ConvertTo-Json -Depth 10
+```
+
+Ask a lesson-related question. Lesson context is optional:
+
+```powershell
+$questionRequest = @{
+    topic = "Fractions"
+    question = "How can I check whether two fractions are equivalent?"
+    learner_level = "beginner"
+    lesson_context = @{
+        lesson_title = $lesson.title
+        learning_objective = $lesson.objectives[0]
+    }
+} | ConvertTo-Json -Depth 10
+
+Invoke-RestMethod `
+    -Method Post `
+    -Uri "http://127.0.0.1:8000/api/v1/teaching/questions" `
+    -ContentType "application/json" `
+    -Body $questionRequest
+```
+
+Both endpoints are documented in `/docs`. Invalid requests return HTTP 422;
+invalid provider output is rejected with a generic HTTP 502 response.
+
+Run the complete backend test suite from the repository root:
+
+```powershell
+Set-Location .\backend
+.\.venv\Scripts\python.exe -m pytest
+```
